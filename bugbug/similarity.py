@@ -24,9 +24,11 @@ try:
     import gensim
     from gensim import models, similarities
     from gensim.models import Word2Vec
+    from gensim.models.doc2vec import Doc2Vec, TaggedDocument
     from gensim.corpora import Dictionary
     from nltk.corpus import stopwords
     from nltk.stem.porter import PorterStemmer
+    from nltk.tokenize import word_tokenize
 except ImportError:
     raise ImportError(OPT_MSG_MISSING)
 
@@ -99,6 +101,8 @@ class BaseSimilarity:
 
                 # Recall
                 for item in duplicates[bug["id"]]:
+                    print(duplicates[bug["id"]])
+                    print(similar_bugs)
                     total_r += 1
                     if item in similar_bugs:
                         hits_r += 1
@@ -309,3 +313,33 @@ class Word2VecWmdSimilarity(BaseSimilarity):
             for similar in sorted(similarities, key=lambda v: v[1])[:10]
             if similar[0] != query["id"]
         ]
+
+
+class Doc2VecSimilarity(BaseSimilarity):
+    def __init__(self):
+        self.corpus = []
+        self.bug_ids = []
+        count = 0
+        for bug in bugzilla.get_bugs():
+            if count % 1000 == 0:
+                print(count)
+            self.corpus.append(text_preprocess(get_text(bug)))
+            self.bug_ids.append(bug["id"])
+            count += 1
+
+        indexes = list(range(len(self.corpus)))
+        random.shuffle(indexes)
+        self.corpus = [self.corpus[idx] for idx in indexes]
+        self.bug_ids = [self.bug_ids[idx] for idx in indexes]
+
+        tagged_corpus = [TaggedDocument(words=d, tags=[str(i)]) for i, d in zip(self.bug_ids, self.corpus)]
+
+        self.d2vmodel = Doc2Vec(vector_size=300, min_count=2, epochs=50)
+        self.d2vmodel.build_vocab(tagged_corpus)
+
+    def get_similar_bugs(self, query):
+        words = text_preprocess(get_text(query))
+        vector = self.d2vmodel.infer_vector(words)
+        sims = self.d2vmodel.docvecs.most_similar([vector], topn=10)
+        print(sims)
+        return [int(d[0]) for d in sims]
