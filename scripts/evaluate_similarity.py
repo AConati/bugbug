@@ -8,7 +8,7 @@ import sys
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from bugbug.similarity import LSISimilarity, NeighborsSimilarity, Word2VecWmdSimilarity
+from bugbug.similarity import LSISimilarity, NeighborsSimilarity, Word2VecWmdSimilarity, Doc2VecSimilarity
 
 
 def parse_args(args):
@@ -16,7 +16,7 @@ def parse_args(args):
     parser.add_argument(
         "--algorithm",
         help="Similarity algorithm to use",
-        choices=["lsi", "neighbors_tfidf", "neighbors_tfidf_bigrams", "word2vec_wmd"],
+        choices=["lsi", "neighbors_tfidf", "neighbors_tfidf_bigrams", "word2vec_wmd", "doc2vec"],
     )
     return parser.parse_args(args)
 
@@ -30,6 +30,8 @@ def main(args):
         model = NeighborsSimilarity(vectorizer=TfidfVectorizer(ngram_range=(1, 2)))
     elif args.algorithm == "word2vec_wmd":
         model = Word2VecWmdSimilarity()
+    elif args.algorithm == "doc2vec":
+        model = Doc2VecSimilarity()
 
     model.evaluation()
 
